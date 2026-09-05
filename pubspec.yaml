@@ -14,11 +14,11 @@ screenshots:
   - description: 'Liveness check entry screen with configurable challenges'
     path: screenshots/01_home.png
   - description: 'Active challenge in progress — face tracked live in camera'
-    path: screenshots/02_challenge.png
+    path: screenshots/02_challenge.jpeg
   - description: 'Live face confirmed with passive anti-spoof signal scores'
-    path: screenshots/03_result.png
+    path: screenshots/03_result.jpeg
   - description: 'Full result card — brightness, sharpness, glare, texture, motion signals'
-    path: screenshots/04_result_full.png
+    path: screenshots/04_result_full.jpeg
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
