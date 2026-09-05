@@ -6,6 +6,13 @@ no per-verification pricing.
 
 Written from scratch on top of Google ML Kit face detection. You own this code.
 
+<p>
+  <img src="screenshots/01_home.png" width="200" alt="Liveness check entry screen">
+  <img src="screenshots/02_challenge.jpeg" width="200" alt="Active challenge in progress">
+  <img src="screenshots/03_result.jpeg" width="200" alt="Live face confirmed with signal scores">
+  <img src="screenshots/04_result_full.jpeg" width="200" alt="Full result card">
+</p>
+
 ## What it checks
 
 Active challenges (order shuffled every session, so a pre-recorded video can't
