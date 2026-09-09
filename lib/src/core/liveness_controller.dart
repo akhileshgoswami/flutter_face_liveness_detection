@@ -382,6 +382,10 @@ class LivenessController extends ValueNotifier<LivenessState> {
 
     String? imagePath;
     if (passed && config.captureFinalImage) {
+      if (config.preCaptureDelay > Duration.zero) {
+        value = value.copyWith(message: 'Hold still');
+        await Future.delayed(config.preCaptureDelay);
+      }
       imagePath = await _captureStill();
     }
 

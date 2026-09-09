@@ -48,6 +48,7 @@ class LivenessConfig {
     this.resolution = ResolutionPreset.medium,
     this.processEveryNthFrame = 1,
     this.captureFinalImage = true,
+    this.preCaptureDelay = const Duration(milliseconds: 900),
     this.livenessThreshold = 0.62,
     this.weights = const SignalWeights(),
     this.minFaceAreaRatio = 0.02,
@@ -98,6 +99,11 @@ class LivenessConfig {
   /// Analyse 1 in N frames. 2 is a good balance on mid-range Android.
   final int processEveryNthFrame;
   final bool captureFinalImage;
+
+  /// Pause before the final still, after challenges finish and scoring
+  /// passes, so the user can settle back to a straight, centred pose instead
+  /// of getting captured mid-turn from the last challenge.
+  final Duration preCaptureDelay;
 
   // --- Scoring -------------------------------------------------------------
 
@@ -185,6 +191,7 @@ class LivenessConfig {
         resolution: resolution,
         processEveryNthFrame: processEveryNthFrame,
         captureFinalImage: captureFinalImage,
+        preCaptureDelay: preCaptureDelay,
         livenessThreshold: livenessThreshold ?? this.livenessThreshold,
         weights: weights,
         minFaceAreaRatio: minFaceAreaRatio,

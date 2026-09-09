@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- Add `preCaptureDelay` (default 900ms): a "Hold still" pause between the
+  last challenge passing and the final photo, so the still isn't snapped
+  mid-turn right after a turn/nod challenge. Set to `Duration.zero` for the
+  old instant-capture behaviour.
+
 ## 0.2.0
 
 - Add mask detection: a worn mask flattens the nose/mouth region relative to
