@@ -303,7 +303,7 @@ class _Hud extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      state.message,
+                      state.message == 'No face detected' ? '' : state.message,
                       key: ValueKey(state.message),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
