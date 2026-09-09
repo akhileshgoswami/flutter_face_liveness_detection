@@ -38,11 +38,22 @@ Each signal returns 0 (spoof) to 1 (live) plus an `available` flag. Signals
 that couldn't run are dropped and the remaining weights renormalise, so a
 device without a gyroscope still gets a fair score.
 
+On top of that, a separate **mask check** runs every frame outside the signal
+score: a worn mask flattens the texture over the nose/mouth relative to the
+eyes/forehead, which ML Kit's landmark points don't reliably expose (they're
+estimated from the face box, not occlusion-aware). If enough frames look
+masked - either several in a row, or too large a fraction of the whole
+session - the session fails immediately with `LivenessFailure.maskDetected`:
+no more challenges, no captured photo.
+
+Face detection itself runs in ML Kit's `fast` performance mode by default, for
+quicker per-frame turnaround on mid-range devices.
+
 ## Install
 
 ```yaml
 dependencies:
-  flutter_face_liveness_detection: ^0.1.0
+  flutter_face_liveness_detection: ^0.2.0
 ```
 
 Android — `android/app/src/main/AndroidManifest.xml`:
@@ -101,6 +112,21 @@ false-reject and false-accept rates balance for your risk appetite.
 `SignalWeights` lets you re-rank the signals. If your users are often in poor
 light, drop `brightness` and `sharpness` weight and lean on `depthParallax`
 and `motionCorrelation`, which are the two hardest to fake.
+
+Mask detection is heuristic (texture, not a trained classifier) - tune it on
+your own devices/lighting before shipping:
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `enableMaskDetection` | `true` | turn the check off entirely |
+| `maskDetectionFrames` | `5` | consecutive/sticky suspected frames before an early fail |
+| `maskTextureRatio` | `0.85` | lower-face-vs-upper-face stdDev ratio below this counts as flat |
+| `maskEntropyDrop` | `0.3` | required entropy drop (upper minus lower) alongside the ratio |
+| `maskSessionFraction` | `0.3` | session-wide fallback: this fraction of all frames looking masked also fails, even if the streak never latched |
+
+If it's firing on bare faces, raise `maskTextureRatio` down or `maskEntropyDrop`
+up (stricter). If it's missing real masks, loosen the same two the other way,
+or lower `maskSessionFraction`.
 
 ## Adding a trained model
 

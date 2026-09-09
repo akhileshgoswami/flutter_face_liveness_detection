@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0
+
+- Add mask detection: a worn mask flattens the nose/mouth region relative to
+  the eyes/forehead, and the analyzer now watches for that texture drop every
+  frame. A session that looks masked for too long, or too consistently, fails
+  fast with `LivenessFailure.maskDetected` instead of completing challenges or
+  capturing a photo. Tunable via `enableMaskDetection`, `maskDetectionFrames`,
+  `maskTextureRatio`, `maskEntropyDrop`, `maskSessionFraction`.
+- Face detector now defaults to ML Kit's `FaceDetectorMode.fast` for quicker
+  per-frame detection on mid-range devices.
+
 ## 0.1.1
 
 - Add screenshots to README.

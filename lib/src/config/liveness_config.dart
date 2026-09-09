@@ -64,6 +64,11 @@ class LivenessConfig {
     this.mirrorYaw = true,
     this.useGyroscope = true,
     this.analysisWindow = 48,
+    this.enableMaskDetection = true,
+    this.maskDetectionFrames = 5,
+    this.maskTextureRatio = 0.85,
+    this.maskEntropyDrop = 0.3,
+    this.maskSessionFraction = 0.3,
     this.instructionBuilder,
   });
 
@@ -135,6 +140,28 @@ class LivenessConfig {
   /// without a gyroscope; the signal just reports unavailable either way.
   final bool useGyroscope;
 
+  /// Block challenge progress and final capture while ML Kit can't find the
+  /// nose/mouth landmarks even though the eyes are visible - the signature of
+  /// a mask covering the lower face.
+  final bool enableMaskDetection;
+
+  /// Consecutive suspected-mask frames required before the gate kicks in,
+  /// so one bad frame doesn't block a bare face.
+  final int maskDetectionFrames;
+
+  /// Lower-face texture (stdDev) must drop below this fraction of the
+  /// upper-face texture to count as "flat like a mask". Lower = stricter.
+  final double maskTextureRatio;
+
+  /// Minimum entropy drop (upper minus lower face) required alongside
+  /// [maskTextureRatio] before flagging a mask.
+  final double maskEntropyDrop;
+
+  /// Session-wide backstop: if at least this fraction of all evaluated
+  /// frames looked masked, the session fails and nothing is captured even
+  /// if the consecutive-frame streak never latched.
+  final double maskSessionFraction;
+
   /// Supply your own copy for localisation.
   final String Function(LivenessChallenge challenge)? instructionBuilder;
 
@@ -174,6 +201,11 @@ class LivenessConfig {
         mirrorYaw: mirrorYaw,
         useGyroscope: useGyroscope ?? this.useGyroscope,
         analysisWindow: analysisWindow,
+        enableMaskDetection: enableMaskDetection,
+        maskDetectionFrames: maskDetectionFrames,
+        maskTextureRatio: maskTextureRatio,
+        maskEntropyDrop: maskEntropyDrop,
+        maskSessionFraction: maskSessionFraction,
         instructionBuilder: instructionBuilder,
       );
 }

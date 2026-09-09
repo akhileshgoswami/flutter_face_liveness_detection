@@ -1,6 +1,6 @@
 name: flutter_face_liveness_detection
 description: On-device face liveness detection for Flutter with randomized active challenges and multi-signal passive anti-spoofing.
-version: 0.1.1
+version: 0.2.0
 homepage: https://github.com/akhileshgoswami/flutter_face_liveness_detection
 repository: https://github.com/akhileshgoswami/flutter_face_liveness_detection
 issue_tracker: https://github.com/akhileshgoswami/flutter_face_liveness_detection/issues

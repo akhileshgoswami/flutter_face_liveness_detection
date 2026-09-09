@@ -7,6 +7,7 @@ enum LivenessFailure {
   noFace,
   multipleFaces,
   poorQuality,
+  maskDetected,
   spoofDetected,
   cameraError,
   permissionDenied,

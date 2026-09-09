@@ -552,6 +552,8 @@ class _ResultSheet extends StatelessWidget {
         return 'More than one face was in frame. Try again alone.';
       case LivenessFailure.poorQuality:
         return 'The camera image was too dark or blurry.';
+      case LivenessFailure.maskDetected:
+        return 'A mask was detected. Please remove it and try again.';
       case LivenessFailure.cameraError:
         return 'The camera could not start. Check permissions.';
       case LivenessFailure.permissionDenied:

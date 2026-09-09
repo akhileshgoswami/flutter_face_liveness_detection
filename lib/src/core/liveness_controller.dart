@@ -115,6 +115,9 @@ class LivenessController extends ValueNotifier<LivenessState> {
 
   Completer<LivenessResult>? _completer;
   int _frameCounter = 0;
+  int _maskStreak = 0;
+  int _maskEvaluatedFrames = 0;
+  int _maskSuspectedFrames = 0;
   bool _busy = false;
   int _sessionStartMs = 0;
   int _sensorOrientation = 0;
@@ -189,6 +192,9 @@ class LivenessController extends ValueNotifier<LivenessState> {
     _completer = Completer<LivenessResult>();
     _sessionStartMs = DateTime.now().millisecondsSinceEpoch;
     _frameCounter = 0;
+    _maskStreak = 0;
+    _maskEvaluatedFrames = 0;
+    _maskSuspectedFrames = 0;
     _analyzer.reset();
     _engine.start(_sessionStartMs);
 
@@ -271,6 +277,27 @@ class LivenessController extends ValueNotifier<LivenessState> {
         mapRectToSensor(face.box, rotationDegrees, luma.width, luma.height);
     final stats = computeFaceStats(luma, sensorRect);
 
+    if (config.enableMaskDetection) {
+      final suspected = _isMaskSuspected(face, luma, rotationDegrees);
+      _maskEvaluatedFrames++;
+      if (suspected) {
+        _maskSuspectedFrames++;
+        // Sticky rather than a hard reset - one clean frame in the middle of
+        // a masked face (motion blur, angle) shouldn't wipe out progress.
+        _maskStreak++;
+      } else {
+        _maskStreak = _maskStreak > 0 ? _maskStreak - 1 : 0;
+      }
+      if (_maskStreak >= config.maskDetectionFrames) {
+        await _finish(LivenessResult.failed(
+          LivenessFailure.maskDetected,
+          completed: _engine.completed,
+          elapsed: Duration(milliseconds: now - _sessionStartMs),
+        ));
+        return;
+      }
+    }
+
     final sample = FrameSample(
       timestampMs: now,
       faceBox: face.box,
@@ -341,7 +368,17 @@ class LivenessController extends ValueNotifier<LivenessState> {
     final signals =
         _analyzer.evaluate(blinkWasRequested: _engine.includesBlink);
     final score = AntiSpoofAnalyzer.combine(signals);
-    final passed = score >= config.livenessThreshold;
+
+    // Backstop: even if the per-frame streak never latched (a few clean
+    // frames kept resetting it), a face that looked masked for a large
+    // fraction of the session still must not pass or get captured.
+    final maskFraction = _maskEvaluatedFrames == 0
+        ? 0.0
+        : _maskSuspectedFrames / _maskEvaluatedFrames;
+    final maskedOverall =
+        config.enableMaskDetection && maskFraction >= config.maskSessionFraction;
+
+    final passed = !maskedOverall && score >= config.livenessThreshold;
 
     String? imagePath;
     if (passed && config.captureFinalImage) {
@@ -351,7 +388,11 @@ class LivenessController extends ValueNotifier<LivenessState> {
     final result = LivenessResult(
       isLive: passed,
       livenessScore: score,
-      failure: passed ? LivenessFailure.none : LivenessFailure.spoofDetected,
+      failure: passed
+          ? LivenessFailure.none
+          : (maskedOverall
+              ? LivenessFailure.maskDetected
+              : LivenessFailure.spoofDetected),
       signals: signals,
       completedChallenges: _engine.completed,
       capturedImagePath: imagePath,
@@ -422,6 +463,43 @@ class LivenessController extends ValueNotifier<LivenessState> {
     if (_completer != null && !_completer!.isCompleted) {
       _completer!.complete(result);
     }
+  }
+
+  /// ML Kit's landmark model estimates a nose/mouth position from the overall
+  /// face box even when that area is covered - it only comes back null when
+  /// the point falls outside the frame, not when it's occluded. So landmark
+  /// presence can't tell a mask apart from a bare face; texture can. Skin
+  /// around the eyes/forehead (brows, lids, hairline) is textured, while a
+  /// mask surface over the nose/mouth is comparatively flat and uniform. Flag
+  /// a mask when the lower-face region is markedly smoother than the upper.
+  bool _isMaskSuspected(DetectedFace face, LumaImage luma, int rotationDegrees) {
+    final box = face.box;
+
+    final lowerFace = Rect.fromLTRB(
+      box.left + box.width * 0.25,
+      box.top + box.height * 0.55,
+      box.left + box.width * 0.75,
+      box.top + box.height * 0.95,
+    );
+    final upperFace = Rect.fromLTRB(
+      box.left + box.width * 0.15,
+      box.top + box.height * 0.08,
+      box.left + box.width * 0.85,
+      box.top + box.height * 0.38,
+    );
+
+    final lowerStats = computeFaceStats(
+        luma, mapRectToSensor(lowerFace, rotationDegrees, luma.width, luma.height));
+    final upperStats = computeFaceStats(
+        luma, mapRectToSensor(upperFace, rotationDegrees, luma.width, luma.height));
+
+    if (upperStats.stdDev < 1e-6) return false;
+
+    final textureRatio = lowerStats.stdDev / upperStats.stdDev;
+    final entropyDrop = upperStats.entropy - lowerStats.entropy;
+
+    return textureRatio < config.maskTextureRatio &&
+        entropyDrop > config.maskEntropyDrop;
   }
 
   // --- Conversion helpers --------------------------------------------------
