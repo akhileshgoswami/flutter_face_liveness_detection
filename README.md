@@ -53,7 +53,7 @@ quicker per-frame turnaround on mid-range devices.
 
 ```yaml
 dependencies:
-  flutter_face_liveness_detection: ^0.2.1
+  flutter_face_liveness_detection: ^0.2.3
 ```
 
 Android — `android/app/src/main/AndroidManifest.xml`:
@@ -101,6 +101,36 @@ controller.addListener(() => print(controller.value.message));
 final result = await controller.start();
 await controller.dispose();
 ```
+
+## Capture and the on-screen oval
+
+By default the final still is cropped down to just the oval the user was
+asked to sit inside - everything outside it is painted black - not the full
+camera frame.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `requireFaceInOval` | `false` | treat a face outside the oval like "no face": challenges won't advance and the still won't be captured until it's recentred |
+| `cropToFace` | `true` | crop the captured still instead of keeping the full frame |
+| `ovalCrop` | `true` | shape that crop to the oval (black outside the ellipse) instead of a padded rectangle around the face box |
+| `faceCropPadding` | `0.4` | margin around the face box, as a fraction of its size - only used when `ovalCrop` is `false` |
+| `ovalWidthFraction` | `0.72` | oval width as a fraction of the screen/frame width |
+| `ovalHeightRatio` | `1.32` | oval height as a multiple of its own width |
+| `ovalCenterYFraction` | `0.4` | oval's vertical center as a fraction of height, from the top |
+| `captureCropScale` | `1.0` | shrinks/grows just the captured still's crop area around the oval's center, independent of the on-screen oval size - e.g. `0.8` for a tighter final photo without changing the guide the user sees |
+
+```dart
+LivenessConfig(
+  requireFaceInOval: true,
+  ovalWidthFraction: 0.8,
+  captureCropScale: 0.85,
+)
+```
+
+Set `cropToFace: false` to go back to saving the full camera frame.
+
+`LivenessScreen(showCapturedImagePreview: true)` shows a thumbnail of the
+captured still on the result card once the session passes (default `false`).
 
 ## Tuning
 

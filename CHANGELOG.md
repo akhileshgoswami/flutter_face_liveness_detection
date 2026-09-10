@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.2
+## 0.2.3
 
 - Add `requireFaceInOval` (default `false`): when on, a detected face outside
   the on-screen capture oval is treated like "no face" - challenges won't
