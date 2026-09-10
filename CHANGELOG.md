@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.2.2
+
+- Add `requireFaceInOval` (default `false`): when on, a detected face outside
+  the on-screen capture oval is treated like "no face" - challenges won't
+  advance and the final still won't be captured - until it's recentred.
+- Captured still now crops to the face by default (`cropToFace`, default
+  `true`) instead of saving the full camera frame, using the last
+  known-good face box from the session plus a configurable margin
+  (`faceCropPadding`, default `0.4`). Set `cropToFace: false` for the old
+  full-frame capture.
+- Add `LivenessScreen.showCapturedImagePreview` (default `false`): shows a
+  thumbnail of the captured still on the result card when the session
+  passes.
+- Add `ovalCrop` (default `true`): when `cropToFace` is on, the captured
+  still is cropped to the on-screen oval's bounding box with everything
+  outside the ellipse painted black, instead of a padded rectangle around
+  the face box. Set `ovalCrop: false` for the old rectangular face crop.
+- Oval size/position is now configurable: `ovalWidthFraction` (default
+  `0.72`, fraction of screen/frame width), `ovalHeightRatio` (default
+  `1.32`, oval height as a multiple of its width), and
+  `ovalCenterYFraction` (default `0.4`, vertical center as a fraction of
+  height from the top). Drives the on-screen oval, the `requireFaceInOval`
+  gate, and the `ovalCrop` capture shape consistently.
+- Add `captureCropScale` (default `1.0`): shrinks (or grows) just the
+  `ovalCrop` capture area around the oval's center, independent of the
+  on-screen guide oval - e.g. `0.8` crops the final still tighter on the
+  face while the displayed oval stays the same size.
+
 ## 0.2.1
 
 - Add `preCaptureDelay` (default 900ms): a "Hold still" pause between the

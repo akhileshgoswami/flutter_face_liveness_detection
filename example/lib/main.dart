@@ -63,6 +63,13 @@ class _HomePageState extends State<HomePage> {
       alwaysIncludeYawSweep: false,
       livenessThreshold: 0.62,
       captureFinalImage: true,
+      requireFaceInOval:true,
+      cropToFace: true,
+      faceCropPadding: 2.9,
+      ovalCrop: true,
+      ovalWidthFraction: 0.9,
+      ovalHeightRatio: 1.25,
+      captureCropScale: 0.6,
       challengeTimeout: const Duration(seconds: 20),
     );
 
@@ -344,7 +351,7 @@ class _LastResultCard extends StatelessWidget {
                 File(result.capturedImagePath!),
                 height: 200,
                 width: double.infinity,
-                fit: BoxFit.cover,
+                fit: BoxFit.contain,
               ),
             ),
           ],

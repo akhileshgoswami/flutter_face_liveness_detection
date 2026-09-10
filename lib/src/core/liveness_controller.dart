@@ -18,6 +18,7 @@ import 'challenge_engine.dart';
 import 'image_stats.dart';
 import 'mlkit_face_detector.dart';
 import 'motion_tracker.dart';
+import 'oval_geometry.dart';
 
 /// Thrown by [LivenessController.initialize] when camera permission was
 /// refused. Carry it to the UI to offer "open settings" when
@@ -122,6 +123,8 @@ class LivenessController extends ValueNotifier<LivenessState> {
   int _sessionStartMs = 0;
   int _sensorOrientation = 0;
   bool _disposed = false;
+  Rect? _lastGoodFaceBox;
+  Size? _lastGoodFrameSize;
 
   CameraController? get cameraController => _camera;
   ValueListenable<LivenessState> get state => this;
@@ -195,6 +198,8 @@ class LivenessController extends ValueNotifier<LivenessState> {
     _maskStreak = 0;
     _maskEvaluatedFrames = 0;
     _maskSuspectedFrames = 0;
+    _lastGoodFaceBox = null;
+    _lastGoodFrameSize = null;
     _analyzer.reset();
     _engine.start(_sessionStartMs);
 
@@ -271,6 +276,20 @@ class LivenessController extends ValueNotifier<LivenessState> {
           faceLandmarks: face.landmarks);
       return;
     }
+    if (config.requireFaceInOval &&
+        !isFaceCenteredInOval(
+          face.box,
+          rotatedSize,
+          widthFraction: config.ovalWidthFraction,
+          heightRatio: config.ovalHeightRatio,
+          centerYFraction: config.ovalCenterYFraction,
+        )) {
+      value = value.copyWith(
+          message: 'Position your face in the oval',
+          faceBox: face.box,
+          faceLandmarks: face.landmarks);
+      return;
+    }
 
     final luma = extractLuma(image);
     final sensorRect =
@@ -297,6 +316,9 @@ class LivenessController extends ValueNotifier<LivenessState> {
         return;
       }
     }
+
+    _lastGoodFaceBox = face.box;
+    _lastGoodFrameSize = rotatedSize;
 
     final sample = FrameSample(
       timestampMs: now,
@@ -425,6 +447,13 @@ class LivenessController extends ValueNotifier<LivenessState> {
       // but users expect a selfie to look like the mirrored preview they
       // just saw, so flip horizontally for that lens only.
       decoded = img.bakeOrientation(decoded);
+
+      if (config.cropToFace) {
+        decoded =
+            (config.ovalCrop ? _cropToOval(decoded) : _cropToFace(decoded)) ??
+                decoded;
+      }
+
       if (config.cameraLens == CameraLensDirection.front) {
         decoded = img.flipHorizontal(decoded);
       }
@@ -449,6 +478,94 @@ class LivenessController extends ValueNotifier<LivenessState> {
       debugPrint('flutter_face_liveness_detection: capture failed $e');
       return null;
     }
+  }
+
+  /// Crops [decoded] down to the last known-good face box (plus padding),
+  /// scaled from the analysis frame's coordinate space up to the still's.
+  /// Coordinates are from the un-mirrored sensor frame, matching an upright,
+  /// not-yet-flipped still - so this must run before the front-camera flip.
+  img.Image? _cropToFace(img.Image decoded) {
+    final box = _lastGoodFaceBox;
+    final frameSize = _lastGoodFrameSize;
+    if (box == null || frameSize == null) return null;
+    if (frameSize.width <= 0 || frameSize.height <= 0) return null;
+
+    final scaleX = decoded.width / frameSize.width;
+    final scaleY = decoded.height / frameSize.height;
+    final padW = box.width * config.faceCropPadding;
+    final padH = box.height * config.faceCropPadding;
+
+    final left = ((box.left - padW) * scaleX).round().clamp(0, decoded.width - 1);
+    final top = ((box.top - padH) * scaleY).round().clamp(0, decoded.height - 1);
+    final right =
+        ((box.right + padW) * scaleX).round().clamp(left + 1, decoded.width);
+    final bottom =
+        ((box.bottom + padH) * scaleY).round().clamp(top + 1, decoded.height);
+
+    return img.copyCrop(
+      decoded,
+      x: left,
+      y: top,
+      width: right - left,
+      height: bottom - top,
+    );
+  }
+
+  /// Crops [decoded] to the bounding box of the on-screen capture oval,
+  /// resized around its center by [LivenessConfig.captureCropScale] (scaled
+  /// from the analysis frame's coordinate space up to the still's, same as
+  /// [_cropToFace]), then paints everything outside the ellipse black - so
+  /// the result matches what was visible inside the oval guide, tightened
+  /// by the scale factor.
+  img.Image? _cropToOval(img.Image decoded) {
+    final frameSize = _lastGoodFrameSize;
+    if (frameSize == null) return null;
+    if (frameSize.width <= 0 || frameSize.height <= 0) return null;
+
+    final baseOval = ovalRectFor(
+      frameSize,
+      widthFraction: config.ovalWidthFraction,
+      heightRatio: config.ovalHeightRatio,
+      centerYFraction: config.ovalCenterYFraction,
+    );
+    final oval = Rect.fromCenter(
+      center: baseOval.center,
+      width: baseOval.width * config.captureCropScale,
+      height: baseOval.height * config.captureCropScale,
+    );
+    final scaleX = decoded.width / frameSize.width;
+    final scaleY = decoded.height / frameSize.height;
+
+    final left = (oval.left * scaleX).round().clamp(0, decoded.width - 1);
+    final top = (oval.top * scaleY).round().clamp(0, decoded.height - 1);
+    final right =
+        (oval.right * scaleX).round().clamp(left + 1, decoded.width);
+    final bottom =
+        (oval.bottom * scaleY).round().clamp(top + 1, decoded.height);
+
+    final cropped = img.copyCrop(
+      decoded,
+      x: left,
+      y: top,
+      width: right - left,
+      height: bottom - top,
+    );
+
+    final rx = cropped.width / 2;
+    final ry = cropped.height / 2;
+    final cx = rx;
+    final cy = ry;
+    for (final pixel in cropped) {
+      final dx = pixel.x - cx;
+      final dy = pixel.y - cy;
+      if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) > 1.0) {
+        pixel
+          ..r = 0
+          ..g = 0
+          ..b = 0;
+      }
+    }
+    return cropped;
   }
 
   Future<void> _finish(LivenessResult result) async {

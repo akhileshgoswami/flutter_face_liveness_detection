@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
@@ -8,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../config/liveness_config.dart';
 import '../core/anti_spoof_analyzer.dart';
 import '../core/liveness_controller.dart';
+import '../core/oval_geometry.dart';
 import '../models/face_landmarks.dart';
 import '../models/liveness_result.dart';
 
@@ -25,12 +27,16 @@ class LivenessScreen extends StatefulWidget {
     this.model,
     this.onCompleted,
     this.autoPop = true,
+    this.showCapturedImagePreview = false,
   });
 
   final LivenessConfig? config;
   final AntiSpoofModel? model;
   final ValueChanged<LivenessResult>? onCompleted;
   final bool autoPop;
+
+  /// Show a thumbnail of the captured still on the result card.
+  final bool showCapturedImagePreview;
 
   @override
   State<LivenessScreen> createState() => _LivenessScreenState();
@@ -101,11 +107,15 @@ class _LivenessScreenState extends State<LivenessScreen> {
                   _error == _ScreenError.none &&
                   _controller.cameraController != null)
                 _CameraLayer(controller: _controller.cameraController!),
-              if (_error == _ScreenError.none) const _OvalScrim(),
+              if (_error == _ScreenError.none)
+                _OvalScrim(config: _controller.config),
               if (_error != _ScreenError.none)
                 _ErrorPanel(kind: _error, detail: _errorDetail, onRetry: _retry)
               else
-                const _Hud(),
+                _Hud(
+                  config: _controller.config,
+                  showCapturedImagePreview: widget.showCapturedImagePreview,
+                ),
               Positioned(
                 top: 8,
                 left: 4,
@@ -216,27 +226,26 @@ class _FaceOverlayPainter extends CustomPainter {
 
 /// Dims everything outside the capture oval so the user knows where to sit.
 class _OvalScrim extends StatelessWidget {
-  const _OvalScrim();
+  const _OvalScrim({required this.config});
+  final LivenessConfig config;
 
   @override
   Widget build(BuildContext context) =>
-      CustomPaint(painter: _ScrimPainter(), size: Size.infinite);
-}
-
-Rect ovalRectFor(Size size) {
-  final width = size.width * 0.72;
-  final height = width * 1.32;
-  return Rect.fromCenter(
-    center: Offset(size.width / 2, size.height * 0.4),
-    width: width,
-    height: height,
-  );
+      CustomPaint(painter: _ScrimPainter(config), size: Size.infinite);
 }
 
 class _ScrimPainter extends CustomPainter {
+  _ScrimPainter(this.config);
+  final LivenessConfig config;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final oval = ovalRectFor(size);
+    final oval = ovalRectFor(
+      size,
+      widthFraction: config.ovalWidthFraction,
+      heightRatio: config.ovalHeightRatio,
+      centerYFraction: config.ovalCenterYFraction,
+    );
     final scrim = Path()
       ..addRect(Offset.zero & size)
       ..addOval(oval)
@@ -253,13 +262,17 @@ class _ScrimPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ScrimPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _ScrimPainter oldDelegate) =>
+      oldDelegate.config != config;
 }
 
 /// Progress ring, step dots, instruction copy and the result card - the main
 /// heads-up display drawn over the camera preview.
 class _Hud extends StatelessWidget {
-  const _Hud();
+  const _Hud({required this.config, required this.showCapturedImagePreview});
+
+  final LivenessConfig config;
+  final bool showCapturedImagePreview;
 
   @override
   Widget build(BuildContext context) {
@@ -267,7 +280,12 @@ class _Hud extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
-        final oval = ovalRectFor(size);
+        final oval = ovalRectFor(
+          size,
+          widthFraction: config.ovalWidthFraction,
+          heightRatio: config.ovalHeightRatio,
+          centerYFraction: config.ovalCenterYFraction,
+        );
         return Stack(
           children: [
             _AnimatedProgressRing(
@@ -330,7 +348,10 @@ class _Hud extends StatelessWidget {
               ),
             ),
             if (state.phase == LivenessPhase.done && state.result != null)
-              _ResultSheet(result: state.result!),
+              _ResultSheet(
+                result: state.result!,
+                showCapturedImagePreview: showCapturedImagePreview,
+              ),
           ],
         );
       },
@@ -459,8 +480,12 @@ class _ProgressRingPainter extends CustomPainter {
 }
 
 class _ResultSheet extends StatelessWidget {
-  const _ResultSheet({required this.result});
+  const _ResultSheet({
+    required this.result,
+    required this.showCapturedImagePreview,
+  });
   final LivenessResult result;
+  final bool showCapturedImagePreview;
 
   @override
   Widget build(BuildContext context) {
@@ -497,6 +522,19 @@ class _ResultSheet extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (showCapturedImagePreview &&
+                    result.capturedImagePath != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.file(
+                        File(result.capturedImagePath!),
+                        height: 160,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
                 Row(
                   children: [
                     Container(

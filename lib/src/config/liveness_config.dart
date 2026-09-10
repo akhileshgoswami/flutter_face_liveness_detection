@@ -48,7 +48,15 @@ class LivenessConfig {
     this.resolution = ResolutionPreset.medium,
     this.processEveryNthFrame = 1,
     this.captureFinalImage = true,
+    this.requireFaceInOval = false,
     this.preCaptureDelay = const Duration(milliseconds: 900),
+    this.cropToFace = true,
+    this.faceCropPadding = 0.4,
+    this.ovalCrop = true,
+    this.ovalWidthFraction = 0.72,
+    this.ovalHeightRatio = 1.32,
+    this.ovalCenterYFraction = 0.4,
+    this.captureCropScale = 1.0,
     this.livenessThreshold = 0.62,
     this.weights = const SignalWeights(),
     this.minFaceAreaRatio = 0.02,
@@ -100,10 +108,48 @@ class LivenessConfig {
   final int processEveryNthFrame;
   final bool captureFinalImage;
 
+  /// Gate the whole session on the face staying centred in the on-screen
+  /// oval, not just inside the frame. When on, a face detected outside the
+  /// oval is treated like "no face" - challenges won't advance and the final
+  /// still won't be captured - until it's repositioned.
+  final bool requireFaceInOval;
+
   /// Pause before the final still, after challenges finish and scoring
   /// passes, so the user can settle back to a straight, centred pose instead
   /// of getting captured mid-turn from the last challenge.
   final Duration preCaptureDelay;
+
+  /// Crop the captured still down to the face region instead of keeping the
+  /// full camera frame. Uses the last known-good face box from the session.
+  final bool cropToFace;
+
+  /// Margin added around the detected face box before cropping, as a
+  /// fraction of the box's width/height on each side. Keep some slack so the
+  /// crop doesn't clip the chin/forehead/ears. Ignored when [ovalCrop] is on.
+  final double faceCropPadding;
+
+  /// When [cropToFace] is on, shape the crop to the same oval shown on
+  /// screen instead of a padded rectangle around the face box: the still is
+  /// cropped to the oval's bounding box and everything outside the ellipse
+  /// is painted black, so only what the user saw inside the oval survives.
+  final bool ovalCrop;
+
+  /// Oval width as a fraction of the screen/frame width. Larger = wider oval.
+  final double ovalWidthFraction;
+
+  /// Oval height as a multiple of its own width. Larger = taller oval.
+  final double ovalHeightRatio;
+
+  /// Vertical center of the oval as a fraction of screen/frame height, from
+  /// the top. Smaller = oval sits higher.
+  final double ovalCenterYFraction;
+
+  /// Shrinks (or grows) just the [ovalCrop] capture area around the oval's
+  /// center, independent of the on-screen guide oval - e.g. 0.8 crops the
+  /// final still to 80% of the displayed oval's width/height, tighter on
+  /// the face, while the guide the user sees stays the same size. 1.0 = same
+  /// as the on-screen oval.
+  final double captureCropScale;
 
   // --- Scoring -------------------------------------------------------------
 
@@ -179,6 +225,7 @@ class LivenessConfig {
     double? livenessThreshold,
     Duration? challengeTimeout,
     bool? useGyroscope,
+    bool? requireFaceInOval,
   }) =>
       LivenessConfig(
         challengePool: challengePool,
@@ -191,7 +238,15 @@ class LivenessConfig {
         resolution: resolution,
         processEveryNthFrame: processEveryNthFrame,
         captureFinalImage: captureFinalImage,
+        requireFaceInOval: requireFaceInOval ?? this.requireFaceInOval,
         preCaptureDelay: preCaptureDelay,
+        cropToFace: cropToFace,
+        faceCropPadding: faceCropPadding,
+        ovalCrop: ovalCrop,
+        ovalWidthFraction: ovalWidthFraction,
+        ovalHeightRatio: ovalHeightRatio,
+        ovalCenterYFraction: ovalCenterYFraction,
+        captureCropScale: captureCropScale,
         livenessThreshold: livenessThreshold ?? this.livenessThreshold,
         weights: weights,
         minFaceAreaRatio: minFaceAreaRatio,
