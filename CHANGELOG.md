@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.4
+
+- Add `LivenessConfig.messages` (`LivenessMessages`): every user-facing
+  string the package shows - status copy ("Position your face in the
+  oval", "Hold still", "Checking", ...), per-challenge instructions
+  (including `holdStillInstruction`, default `'Hold still and look at the
+  camera'`), result-card copy for each `LivenessFailure`, and the error
+  panel/permission copy - is now overridable without forking the UI. Every
+  field defaults to the current copy, so leaving `messages` unset changes
+  nothing.
+- `LivenessConfig.instructionBuilder` still takes priority over
+  `messages`'s per-challenge fields when both are supplied.
+
 ## 0.2.3
 
 - Add `requireFaceInOval` (default `false`): when on, a detected face outside

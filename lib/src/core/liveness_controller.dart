@@ -131,7 +131,8 @@ class LivenessController extends ValueNotifier<LivenessState> {
 
   Future<void> initialize() async {
     value = value.copyWith(
-        phase: LivenessPhase.preparing, message: 'Requesting camera access');
+        phase: LivenessPhase.preparing,
+        message: config.messages.requestingCameraAccess);
 
     var status = await Permission.camera.status;
     if (!status.isGranted) {
@@ -142,7 +143,7 @@ class LivenessController extends ValueNotifier<LivenessState> {
           permanentlyDenied: status.isPermanentlyDenied);
     }
 
-    value = value.copyWith(message: 'Starting camera');
+    value = value.copyWith(message: config.messages.startingCamera);
 
     final cameras = await availableCameras();
     final camera = cameras.firstWhere(
@@ -178,7 +179,7 @@ class LivenessController extends ValueNotifier<LivenessState> {
 
     value = value.copyWith(
       previewSize: controller.value.previewSize,
-      message: 'Ready',
+      message: config.messages.ready,
     );
   }
 
@@ -205,7 +206,7 @@ class LivenessController extends ValueNotifier<LivenessState> {
 
     value = value.copyWith(
       phase: LivenessPhase.searchingFace,
-      message: 'Position your face in the oval',
+      message: config.messages.positionFaceInOval,
       total: _engine.sequence.length,
       completed: 0,
     );
@@ -251,7 +252,7 @@ class LivenessController extends ValueNotifier<LivenessState> {
     if (face == null) {
       value = value.copyWith(
         phase: LivenessPhase.searchingFace,
-        message: 'No face detected',
+        message: config.messages.noFaceDetected,
         clearFaceBox: true,
       );
       return;
@@ -264,14 +265,14 @@ class LivenessController extends ValueNotifier<LivenessState> {
         (rotatedSize.width * rotatedSize.height);
     if (areaRatio < config.minFaceAreaRatio) {
       value = value.copyWith(
-          message: 'Move closer',
+          message: config.messages.moveCloser,
           faceBox: face.box,
           faceLandmarks: face.landmarks);
       return;
     }
     if (areaRatio > config.maxFaceAreaRatio) {
       value = value.copyWith(
-          message: 'Move back a little',
+          message: config.messages.moveBack,
           faceBox: face.box,
           faceLandmarks: face.landmarks);
       return;
@@ -285,7 +286,7 @@ class LivenessController extends ValueNotifier<LivenessState> {
           centerYFraction: config.ovalCenterYFraction,
         )) {
       value = value.copyWith(
-          message: 'Position your face in the oval',
+          message: config.messages.positionFaceInOval,
           faceBox: face.box,
           faceLandmarks: face.landmarks);
       return;
@@ -366,7 +367,7 @@ class LivenessController extends ValueNotifier<LivenessState> {
     value = value.copyWith(
       phase: LivenessPhase.challenging,
       message: update.current == null
-          ? 'Almost done'
+          ? config.messages.almostDone
           : config.instructionFor(update.current!),
       currentChallenge: update.current,
       clearChallenge: update.current == null,
@@ -384,7 +385,7 @@ class LivenessController extends ValueNotifier<LivenessState> {
   Future<void> _score(int now) async {
     value = value.copyWith(
         phase: LivenessPhase.scoring,
-        message: 'Checking',
+        message: config.messages.checking,
         clearChallenge: true);
 
     final signals =
@@ -397,15 +398,15 @@ class LivenessController extends ValueNotifier<LivenessState> {
     final maskFraction = _maskEvaluatedFrames == 0
         ? 0.0
         : _maskSuspectedFrames / _maskEvaluatedFrames;
-    final maskedOverall =
-        config.enableMaskDetection && maskFraction >= config.maskSessionFraction;
+    final maskedOverall = config.enableMaskDetection &&
+        maskFraction >= config.maskSessionFraction;
 
     final passed = !maskedOverall && score >= config.livenessThreshold;
 
     String? imagePath;
     if (passed && config.captureFinalImage) {
       if (config.preCaptureDelay > Duration.zero) {
-        value = value.copyWith(message: 'Hold still');
+        value = value.copyWith(message: config.messages.holdStill);
         await Future.delayed(config.preCaptureDelay);
       }
       imagePath = await _captureStill();
@@ -495,8 +496,10 @@ class LivenessController extends ValueNotifier<LivenessState> {
     final padW = box.width * config.faceCropPadding;
     final padH = box.height * config.faceCropPadding;
 
-    final left = ((box.left - padW) * scaleX).round().clamp(0, decoded.width - 1);
-    final top = ((box.top - padH) * scaleY).round().clamp(0, decoded.height - 1);
+    final left =
+        ((box.left - padW) * scaleX).round().clamp(0, decoded.width - 1);
+    final top =
+        ((box.top - padH) * scaleY).round().clamp(0, decoded.height - 1);
     final right =
         ((box.right + padW) * scaleX).round().clamp(left + 1, decoded.width);
     final bottom =
@@ -538,8 +541,7 @@ class LivenessController extends ValueNotifier<LivenessState> {
 
     final left = (oval.left * scaleX).round().clamp(0, decoded.width - 1);
     final top = (oval.top * scaleY).round().clamp(0, decoded.height - 1);
-    final right =
-        (oval.right * scaleX).round().clamp(left + 1, decoded.width);
+    final right = (oval.right * scaleX).round().clamp(left + 1, decoded.width);
     final bottom =
         (oval.bottom * scaleY).round().clamp(top + 1, decoded.height);
 
@@ -577,7 +579,9 @@ class LivenessController extends ValueNotifier<LivenessState> {
     }
     value = value.copyWith(
       phase: LivenessPhase.done,
-      message: result.isLive ? 'Verified' : 'Verification failed',
+      message: result.isLive
+          ? config.messages.verified
+          : config.messages.verificationFailed,
       result: result,
       clearChallenge: true,
     );
@@ -593,7 +597,8 @@ class LivenessController extends ValueNotifier<LivenessState> {
   /// around the eyes/forehead (brows, lids, hairline) is textured, while a
   /// mask surface over the nose/mouth is comparatively flat and uniform. Flag
   /// a mask when the lower-face region is markedly smoother than the upper.
-  bool _isMaskSuspected(DetectedFace face, LumaImage luma, int rotationDegrees) {
+  bool _isMaskSuspected(
+      DetectedFace face, LumaImage luma, int rotationDegrees) {
     final box = face.box;
 
     final lowerFace = Rect.fromLTRB(
@@ -609,10 +614,10 @@ class LivenessController extends ValueNotifier<LivenessState> {
       box.top + box.height * 0.38,
     );
 
-    final lowerStats = computeFaceStats(
-        luma, mapRectToSensor(lowerFace, rotationDegrees, luma.width, luma.height));
-    final upperStats = computeFaceStats(
-        luma, mapRectToSensor(upperFace, rotationDegrees, luma.width, luma.height));
+    final lowerStats = computeFaceStats(luma,
+        mapRectToSensor(lowerFace, rotationDegrees, luma.width, luma.height));
+    final upperStats = computeFaceStats(luma,
+        mapRectToSensor(upperFace, rotationDegrees, luma.width, luma.height));
 
     if (upperStats.stdDev < 1e-6) return false;
 

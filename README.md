@@ -132,6 +132,36 @@ Set `cropToFace: false` to go back to saving the full camera frame.
 `LivenessScreen(showCapturedImagePreview: true)` shows a thumbnail of the
 captured still on the result card once the session passes (default `false`).
 
+## Custom copy / localisation
+
+Every string shown to the user lives on `LivenessConfig.messages`
+(`LivenessMessages`) - status text, per-challenge instructions, result-card
+copy, error panel text. Override only what you need; everything else keeps
+the default English copy.
+
+```dart
+LivenessConfig(
+  messages: LivenessMessages(
+    holdStillInstruction: 'Stay still, look straight at the camera',
+    positionFaceInOval: 'Center your face in the frame',
+    checking: 'Verifying…',
+  ),
+)
+```
+
+For fully dynamic per-challenge text (e.g. driven by app state), use
+`instructionBuilder` instead - it takes priority over `messages`'s
+per-challenge fields:
+
+```dart
+LivenessConfig(
+  instructionBuilder: (challenge) => switch (challenge) {
+    LivenessChallenge.holdStill => 'Hold still and look at the camera',
+    _ => challenge.defaultInstruction,
+  },
+)
+```
+
 ## Tuning
 
 `livenessThreshold` is the one knob that matters. Start at 0.62, then run your

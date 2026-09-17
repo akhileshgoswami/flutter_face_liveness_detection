@@ -30,6 +30,135 @@ class SignalWeights {
   final double model;
 }
 
+/// Every user-facing string the package shows, so you can localise or
+/// reword any of them without forking the UI. Each field defaults to the
+/// package's current copy, so leaving [LivenessConfig.messages] unset keeps
+/// today's behaviour exactly as-is.
+class LivenessMessages {
+  const LivenessMessages({
+    this.requestingCameraAccess = 'Requesting camera access',
+    this.startingCamera = 'Starting camera',
+    this.ready = 'Ready',
+    this.positionFaceInOval = 'Position your face in the oval',
+    this.noFaceDetected = 'No face detected',
+    this.moveCloser = 'Move closer',
+    this.moveBack = 'Move back a little',
+    this.almostDone = 'Almost done',
+    this.checking = 'Checking',
+    this.holdStill = 'Hold still',
+    this.verified = 'Verified',
+    this.verificationFailed = 'Verification failed',
+    this.blinkInstruction = 'Blink slowly',
+    this.smileInstruction = 'Smile',
+    this.turnLeftInstruction = 'Turn your head left',
+    this.turnRightInstruction = 'Turn your head right',
+    this.nodDownInstruction = 'Look down',
+    this.holdStillInstruction = 'Hold still and look at the camera',
+    this.liveFaceConfirmed = 'Live face confirmed',
+    this.spoofDetectedResult =
+        'That did not look like a live face. Try again in better light, without a screen or printout.',
+    this.challengeTimeoutResult =
+        'The step timed out. Start again and follow the prompt.',
+    this.sessionTimeoutResult = 'The session ran out of time. Start again.',
+    this.noFaceResult = 'No face was found. Centre your face in the oval.',
+    this.multipleFacesResult =
+        'More than one face was in frame. Try again alone.',
+    this.poorQualityResult = 'The camera image was too dark or blurry.',
+    this.maskDetectedResult =
+        'A mask was detected. Please remove it and try again.',
+    this.cameraErrorResult = 'The camera could not start. Check permissions.',
+    this.permissionDeniedResult =
+        'Camera permission is required to verify your face.',
+    this.cancelledResult = 'Verification cancelled.',
+    this.genericFailureResult = 'Verification failed.',
+    this.cameraAccessNeededTitle = 'Camera access needed',
+    this.cameraStartFailedTitle = 'The camera could not start',
+    this.cameraAccessNeededBody =
+        'Face verification needs the camera to check you are a real, present person.',
+    this.unknownError = 'Unknown error',
+    this.openSettings = 'Open settings',
+    this.tryAgain = 'Try again',
+    this.stepOfBuilder,
+  });
+
+  // --- Session status copy --------------------------------------------------
+
+  final String requestingCameraAccess;
+  final String startingCamera;
+  final String ready;
+  final String positionFaceInOval;
+  final String noFaceDetected;
+  final String moveCloser;
+  final String moveBack;
+  final String almostDone;
+  final String checking;
+
+  /// Shown during [LivenessConfig.preCaptureDelay], right before the final
+  /// still is taken.
+  final String holdStill;
+  final String verified;
+  final String verificationFailed;
+
+  // --- Per-challenge instruction copy ---------------------------------------
+
+  final String blinkInstruction;
+  final String smileInstruction;
+  final String turnLeftInstruction;
+  final String turnRightInstruction;
+  final String nodDownInstruction;
+  final String holdStillInstruction;
+
+  // --- Result card copy ------------------------------------------------------
+
+  final String liveFaceConfirmed;
+  final String spoofDetectedResult;
+  final String challengeTimeoutResult;
+  final String sessionTimeoutResult;
+  final String noFaceResult;
+  final String multipleFacesResult;
+  final String poorQualityResult;
+  final String maskDetectedResult;
+  final String cameraErrorResult;
+  final String permissionDeniedResult;
+  final String cancelledResult;
+  final String genericFailureResult;
+
+  // --- Error panel copy ------------------------------------------------------
+
+  final String cameraAccessNeededTitle;
+  final String cameraStartFailedTitle;
+  final String cameraAccessNeededBody;
+  final String unknownError;
+  final String openSettings;
+  final String tryAgain;
+
+  /// Builds the "Step X of Y" caption under the instruction text. Defaults to
+  /// `'Step $step of $total'`.
+  final String Function(int step, int total)? stepOfBuilder;
+
+  String stepOf(int step, int total) =>
+      stepOfBuilder?.call(step, total) ?? 'Step $step of $total';
+
+  /// The default copy for [challenge], before [LivenessConfig.instructionBuilder]
+  /// (if supplied) gets a chance to override it.
+  String instructionFor(LivenessChallenge challenge) {
+    switch (challenge) {
+      case LivenessChallenge.blink:
+        return blinkInstruction;
+      case LivenessChallenge.smile:
+        return smileInstruction;
+      case LivenessChallenge.turnLeft:
+        return turnLeftInstruction;
+      case LivenessChallenge.turnRight:
+        return turnRightInstruction;
+      case LivenessChallenge.nodDown:
+        return nodDownInstruction;
+      case LivenessChallenge.holdStill:
+        return holdStillInstruction;
+    }
+  }
+}
+
 class LivenessConfig {
   const LivenessConfig({
     this.challengePool = const [
@@ -78,6 +207,7 @@ class LivenessConfig {
     this.maskTextureRatio = 0.85,
     this.maskEntropyDrop = 0.3,
     this.maskSessionFraction = 0.3,
+    this.messages = const LivenessMessages(),
     this.instructionBuilder,
   });
 
@@ -214,11 +344,16 @@ class LivenessConfig {
   /// if the consecutive-frame streak never latched.
   final double maskSessionFraction;
 
-  /// Supply your own copy for localisation.
+  /// Every user-facing string in the package. Override any field to reword
+  /// or localise it; unset fields keep the current default copy.
+  final LivenessMessages messages;
+
+  /// Supply your own copy for localisation. Takes priority over
+  /// [messages]'s per-challenge instruction fields when set.
   final String Function(LivenessChallenge challenge)? instructionBuilder;
 
   String instructionFor(LivenessChallenge challenge) =>
-      instructionBuilder?.call(challenge) ?? challenge.defaultInstruction;
+      instructionBuilder?.call(challenge) ?? messages.instructionFor(challenge);
 
   LivenessConfig copyWith({
     int? challengeCount,
@@ -226,6 +361,7 @@ class LivenessConfig {
     Duration? challengeTimeout,
     bool? useGyroscope,
     bool? requireFaceInOval,
+    LivenessMessages? messages,
   }) =>
       LivenessConfig(
         challengePool: challengePool,
@@ -268,6 +404,7 @@ class LivenessConfig {
         maskTextureRatio: maskTextureRatio,
         maskEntropyDrop: maskEntropyDrop,
         maskSessionFraction: maskSessionFraction,
+        messages: messages ?? this.messages,
         instructionBuilder: instructionBuilder,
       );
 }

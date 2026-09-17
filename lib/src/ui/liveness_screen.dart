@@ -110,7 +110,12 @@ class _LivenessScreenState extends State<LivenessScreen> {
               if (_error == _ScreenError.none)
                 _OvalScrim(config: _controller.config),
               if (_error != _ScreenError.none)
-                _ErrorPanel(kind: _error, detail: _errorDetail, onRetry: _retry)
+                _ErrorPanel(
+                  kind: _error,
+                  detail: _errorDetail,
+                  onRetry: _retry,
+                  messages: _controller.config.messages,
+                )
               else
                 _Hud(
                   config: _controller.config,
@@ -321,7 +326,9 @@ class _Hud extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      state.message == 'No face detected' ? '' : state.message,
+                      state.message == config.messages.noFaceDetected
+                          ? ''
+                          : state.message,
                       key: ValueKey(state.message),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
@@ -336,7 +343,9 @@ class _Hud extends StatelessWidget {
                   const SizedBox(height: 10),
                   if (state.total > 0)
                     Text(
-                      'Step ${math.min(state.completed + 1, state.total)} of ${state.total}',
+                      config.messages.stepOf(
+                          math.min(state.completed + 1, state.total),
+                          state.total),
                       style: const TextStyle(
                         color: Colors.white54,
                         fontSize: 13,
@@ -351,6 +360,7 @@ class _Hud extends StatelessWidget {
               _ResultSheet(
                 result: state.result!,
                 showCapturedImagePreview: showCapturedImagePreview,
+                messages: config.messages,
               ),
           ],
         );
@@ -483,9 +493,11 @@ class _ResultSheet extends StatelessWidget {
   const _ResultSheet({
     required this.result,
     required this.showCapturedImagePreview,
+    required this.messages,
   });
   final LivenessResult result;
   final bool showCapturedImagePreview;
+  final LivenessMessages messages;
 
   @override
   Widget build(BuildContext context) {
@@ -554,8 +566,8 @@ class _ResultSheet extends StatelessWidget {
                     Expanded(
                       child: Text(
                         good
-                            ? 'Live face confirmed'
-                            : _failureCopy(result.failure),
+                            ? messages.liveFaceConfirmed
+                            : _failureCopy(messages, result.failure),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 15.5,
@@ -576,30 +588,30 @@ class _ResultSheet extends StatelessWidget {
     );
   }
 
-  String _failureCopy(LivenessFailure f) {
+  String _failureCopy(LivenessMessages messages, LivenessFailure f) {
     switch (f) {
       case LivenessFailure.spoofDetected:
-        return 'That did not look like a live face. Try again in better light, without a screen or printout.';
+        return messages.spoofDetectedResult;
       case LivenessFailure.challengeTimeout:
-        return 'The step timed out. Start again and follow the prompt.';
+        return messages.challengeTimeoutResult;
       case LivenessFailure.sessionTimeout:
-        return 'The session ran out of time. Start again.';
+        return messages.sessionTimeoutResult;
       case LivenessFailure.noFace:
-        return 'No face was found. Centre your face in the oval.';
+        return messages.noFaceResult;
       case LivenessFailure.multipleFaces:
-        return 'More than one face was in frame. Try again alone.';
+        return messages.multipleFacesResult;
       case LivenessFailure.poorQuality:
-        return 'The camera image was too dark or blurry.';
+        return messages.poorQualityResult;
       case LivenessFailure.maskDetected:
-        return 'A mask was detected. Please remove it and try again.';
+        return messages.maskDetectedResult;
       case LivenessFailure.cameraError:
-        return 'The camera could not start. Check permissions.';
+        return messages.cameraErrorResult;
       case LivenessFailure.permissionDenied:
-        return 'Camera permission is required to verify your face.';
+        return messages.permissionDeniedResult;
       case LivenessFailure.cancelled:
-        return 'Verification cancelled.';
+        return messages.cancelledResult;
       case LivenessFailure.none:
-        return 'Verification failed.';
+        return messages.genericFailureResult;
     }
   }
 }
@@ -643,11 +655,16 @@ class _ScoreBar extends StatelessWidget {
 }
 
 class _ErrorPanel extends StatelessWidget {
-  const _ErrorPanel(
-      {required this.kind, required this.detail, required this.onRetry});
+  const _ErrorPanel({
+    required this.kind,
+    required this.detail,
+    required this.onRetry,
+    required this.messages,
+  });
   final _ScreenError kind;
   final String? detail;
   final VoidCallback onRetry;
+  final LivenessMessages messages;
 
   @override
   Widget build(BuildContext context) {
@@ -676,8 +693,8 @@ class _ErrorPanel extends StatelessWidget {
             const SizedBox(height: 18),
             Text(
               isPermission
-                  ? 'Camera access needed'
-                  : 'The camera could not start',
+                  ? messages.cameraAccessNeededTitle
+                  : messages.cameraStartFailedTitle,
               style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -686,8 +703,8 @@ class _ErrorPanel extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               isPermission
-                  ? 'Face verification needs the camera to check you are a real, present person.'
-                  : (detail ?? 'Unknown error'),
+                  ? messages.cameraAccessNeededBody
+                  : (detail ?? messages.unknownError),
               textAlign: TextAlign.center,
               style: const TextStyle(
                   color: Colors.white54, fontSize: 13, height: 1.4),
@@ -706,8 +723,8 @@ class _ErrorPanel extends StatelessWidget {
                   ? openAppSettings
                   : onRetry,
               child: Text(kind == _ScreenError.permissionPermanent
-                  ? 'Open settings'
-                  : 'Try again'),
+                  ? messages.openSettings
+                  : messages.tryAgain),
             ),
           ],
         ),
