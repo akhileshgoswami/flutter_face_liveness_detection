@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.4
+## 0.2.5
 
 - Add `LivenessConfig.messages` (`LivenessMessages`): every user-facing
   string the package shows - status copy ("Position your face in the
