@@ -128,10 +128,11 @@ class _LivenessScreenState extends State<LivenessScreen> {
                   child: IconButton(
                     icon:
                         const Icon(Icons.close_rounded, color: Colors.white70),
-                    onPressed: () async {
-                      await _controller.cancel();
-                      if (!context.mounted || !widget.autoPop) return;
-                      Navigator.of(context).pop();
+                    onPressed: () {
+                      // `_run()`'s own autoPop already pops once `cancel()`
+                      // completes the session future - popping again here
+                      // would pop an extra route.
+                      _controller.cancel();
                     },
                   ),
                 ),
