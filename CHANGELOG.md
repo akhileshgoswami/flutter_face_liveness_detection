@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.6
+
+- Challenges are now optional: pass `challengeCount: 0` (or an empty
+  `challengePool`) to skip active challenges entirely. The session collects
+  face frames, then scores on the passive anti-spoof signals only
+  (brightness, sharpness, glare, texture, micro-motion, mask check).
+  Previously `challengeCount` was clamped to at least 1 and an empty pool
+  fell back to a blink challenge.
+- Add `LivenessConfig.passiveFrameCount` (default `12`): frames to collect
+  before scoring when no challenges are requested. Capped at
+  `analysisWindow`.
+- Example app: challenge picker now allows deselecting every challenge.
+
 ## 0.2.5
 
 - Add `LivenessConfig.messages` (`LivenessMessages`): every user-facing

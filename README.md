@@ -53,7 +53,7 @@ quicker per-frame turnaround on mid-range devices.
 
 ```yaml
 dependencies:
-  flutter_face_liveness_detection: ^0.2.3
+  flutter_face_liveness_detection: ^0.2.6
 ```
 
 Android — `android/app/src/main/AndroidManifest.xml`:
