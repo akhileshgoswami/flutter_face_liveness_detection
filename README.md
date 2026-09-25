@@ -92,6 +92,16 @@ if (result != null && result.isLive) {
 }
 ```
 
+No challenges (passive checks only) - pass `challengeCount: 0` or an empty
+`challengePool`. The session collects `passiveFrameCount` frames (default 12)
+of the face, then scores on the passive signals:
+
+```dart
+LivenessScreen(
+  config: LivenessConfig(challengeCount: 0),
+)
+```
+
 Headless, if you want your own UI:
 
 ```dart

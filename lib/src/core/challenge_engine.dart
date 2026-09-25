@@ -60,11 +60,12 @@ class ChallengeEngine {
 
   List<LivenessChallenge> _buildSequence() {
     final pool = List<LivenessChallenge>.from(config.challengePool);
-    if (pool.isEmpty) return [LivenessChallenge.blink];
+    // No challenges requested: passive-only session.
+    if (pool.isEmpty || config.challengeCount <= 0) return [];
 
     if (config.randomizeOrder) pool.shuffle(_random);
 
-    final count = config.challengeCount.clamp(1, pool.length);
+    final count = min(config.challengeCount, pool.length);
     final picked = pool.take(count).toList();
 
     if (config.alwaysIncludeYawSweep &&

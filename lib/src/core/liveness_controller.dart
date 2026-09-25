@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -347,6 +348,22 @@ class LivenessController extends ValueNotifier<LivenessState> {
     _analyzer.add(sample);
     if (_model != null) {
       _analyzer.addModelScore(await _model.scoreFrame(luma, sample));
+    }
+
+    // Passive-only session: no challenges, just gather frames then score.
+    if (_engine.sequence.isEmpty) {
+      value = value.copyWith(
+        phase: LivenessPhase.challenging,
+        message: config.messages.holdStill,
+        faceBox: face.box,
+        faceLandmarks: face.landmarks,
+      );
+      // The analyzer never holds more than analysisWindow samples.
+      final needed = math.min(config.passiveFrameCount, config.analysisWindow);
+      if (_analyzer.sampleCount >= needed) {
+        await _score(now);
+      }
+      return;
     }
 
     final update = _engine.update(sample);

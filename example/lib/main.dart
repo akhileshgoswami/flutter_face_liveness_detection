@@ -46,7 +46,7 @@ class _HomePageState extends State<HomePage> {
   void _toggleChallenge(LivenessChallenge challenge) {
     setState(() {
       if (_selected.contains(challenge)) {
-        if (_selected.length > 1) _selected.remove(challenge);
+        _selected.remove(challenge);
       } else {
         _selected.add(challenge);
       }

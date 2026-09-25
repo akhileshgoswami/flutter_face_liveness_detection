@@ -169,6 +169,7 @@ class LivenessConfig {
       LivenessChallenge.nodDown,
     ],
     this.challengeCount = 3,
+    this.passiveFrameCount = 12,
     this.randomizeOrder = true,
     this.alwaysIncludeYawSweep = true,
     this.challengeTimeout = const Duration(seconds: 10),
@@ -215,8 +216,14 @@ class LivenessConfig {
 
   final List<LivenessChallenge> challengePool;
 
-  /// How many challenges to draw from the pool.
+  /// How many challenges to draw from the pool. Pass 0 (or an empty
+  /// [challengePool]) to skip challenges entirely and score on the passive
+  /// signals only.
   final int challengeCount;
+
+  /// Frames to collect before scoring when no challenges are requested, so
+  /// the passive signals (sharpness, texture, micro-motion...) have data.
+  final int passiveFrameCount;
 
   /// Shuffle order every session. Keep this on: a fixed order lets an attacker
   /// pre-record one video that passes every time.
@@ -366,6 +373,7 @@ class LivenessConfig {
       LivenessConfig(
         challengePool: challengePool,
         challengeCount: challengeCount ?? this.challengeCount,
+        passiveFrameCount: passiveFrameCount,
         randomizeOrder: randomizeOrder,
         alwaysIncludeYawSweep: alwaysIncludeYawSweep,
         challengeTimeout: challengeTimeout ?? this.challengeTimeout,
